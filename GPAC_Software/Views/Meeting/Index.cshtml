@@ -1,0 +1,231 @@
+﻿<div class="container mt-4">
+    <h2>Meeting Management</h2>
+
+    <!-- Card 1: Customer and Meeting Details -->
+    <div class="card mt-4">
+        <div class="card-header bg-primary text-white">
+            Customer and Meeting Details
+        </div>
+        <div class="card-body">
+            <div class="col-md-6">
+                <label>Customer Type</label>
+                <div>
+                    <input type="radio" name="customerType" value="Corporate" checked> Corporate
+                    <input type="radio" name="customerType" value="Individual"> Individual
+                </div>
+            </div>
+            <div class="row">
+                <!-- Column 1 -->
+                <div class="col-md-6">
+
+                    <div class="mt-3">
+                        <label>Customer Name</label>
+                        <select id="customerDropdown" class="form-select"></select>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6">
+                            <label>Date</label>
+                            <input type="date" id="date" class="form-control">
+                        </div>
+                        <div class="col-md-6">
+                            <label>Time</label>
+                            <input type="time" id="time" class="form-control">
+                        </div>
+                    </div>
+                    <div class="mt-3">
+                        <label>Meeting Place</label>
+                        <input type="text" id="meetingPlace" class="form-control" placeholder="Enter Meeting Place">
+                    </div>
+
+                    <div class="mt-3">
+                        <label>Attends From Client Side</label>
+                        <textarea id="attendeesClientSide" class="form-control" rows="2" placeholder="Enter Attendees"></textarea>
+                    </div>
+                    <div class="mt-3">
+                        <label>Attends From Host Side</label>
+                        <textarea id="attendeesHostSide" class="form-control" rows="2" placeholder="Enter Attendees"></textarea>
+                    </div>
+                </div>
+
+                <!-- Column 2 -->
+                <div class="col-md-6">
+
+
+                    <div class="mt-3">
+                        <label>Meeting Agenda</label>
+                        <textarea id="meetingAgenda" class="form-control" rows="2" placeholder="Enter Meeting Agenda"></textarea>
+                    </div>
+
+                    <div class="mt-3">
+                        <label>Meeting Discussion</label>
+                        <textarea id="meetingDiscussion" class="form-control" rows="2" placeholder="Enter Meeting Discussion"></textarea>
+                    </div>
+
+                    <div class="mt-3">
+                        <label>Meeting Decision</label>
+                        <textarea id="meetingDecision" class="form-control" rows="2" placeholder="Enter Meeting Decision"></textarea>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Card 2: Product Details -->
+    <div class="card mt-4">
+        <div class="card-header bg-success text-white">
+            Product Details
+        </div>
+        <div class="card-body">
+            <div class="row">
+                <!-- Product Selection -->
+                <div class="col-md-6">
+                    <label>Select Product</label>
+                    <select id="productDropdown" class="form-select">
+                        <option value="">Select Product</option>
+                        @foreach (var product in ViewBag.Products)
+                        {
+                            <option value="@product.Id" data-unit="@product.Unit">@product.Name</option>
+                        }
+                    </select>
+                </div>
+
+                <!-- Quantity and Unit in the Same Row -->
+                <div class="col-md-3">
+                    <label>Quantity</label>
+                    <input type="number" id="quantity" class="form-control" placeholder="Enter Quantity">
+                </div>
+                <div class="col-md-3">
+                    <label>Unit</label>
+                    <input type="text" id="unit" class="form-control" readonly placeholder="Unit">
+                </div>
+            </div>
+            <button id="addProduct" class="btn btn-primary mt-3">Add Product</button>
+        </div>
+    </div>
+
+    <!-- Card 3: Product Table -->
+    <div class="card mt-4">
+        <div class="card-header bg-info text-white">
+            List of Added Products
+        </div>
+        <div class="card-body">
+            <table class="table table-striped mt-3">
+                <thead>
+                    <tr>
+                        <th>Product</th>
+                        <th>Unit</th>
+                        <th>Quantity</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="productTable"></tbody>
+            </table>
+            <button id="saveMeeting" class="btn btn-success">Save Meeting</button>
+        </div>
+    </div>
+</div>
+
+
+
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script>
+        $(document).ready(function () {
+        // Dynamically load customers based on customer type
+        $('input[name="customerType"]').change(function () {
+            loadCustomers($(this).val());
+        });
+
+        // Initial customer load
+        loadCustomers('Corporate');
+
+        function loadCustomers(type) {
+            $.post('/Meeting/LoadCustomers', { type: type }, function (data) {
+                $("#customerDropdown").empty();
+                data.forEach(function (customer) {
+                    $("#customerDropdown").append(`<option value="${customer.id}">${customer.name}</option>`);
+                });
+            });
+        }
+
+        // Load unit for selected product
+        $("#productDropdown").change(function () {
+            const unit = $(this).find(':selected').data('unit');
+            $("#unit").val(unit);
+        });
+
+        // Add product to the table
+        $("#addProduct").click(function () {
+            const productName = $("#productDropdown option:selected").text();
+            const productId = $("#productDropdown").val();
+            const unit = $("#unit").val();
+            const quantity = $("#quantity").val();
+
+            if (!productId || !quantity || quantity <= 0) {
+                alert("Please select a valid product and quantity.");
+                return;
+            }
+
+            const row = `
+                <tr data-id="${productId}">
+                    <td>${productName}</td>
+                    <td>${unit}</td>
+                    <td>${quantity}</td>
+                    <td>
+                        <button class="btn btn-danger btn-sm deleteRow">Delete</button>
+                    </td>
+                </tr>
+            `;
+
+            $("#productTable").append(row);
+            $("#quantity").val(''); // Clear quantity input
+        });
+
+        // Delete row from the table
+        $(document).on("click", ".deleteRow", function () {
+            $(this).closest("tr").remove();
+        });
+
+        // Save meeting data
+        $("#saveMeeting").click(function () {
+            const meetingData = {
+                customerType: $('input[name="customerType"]:checked').val(),
+                customerId: $("#customerDropdown").val(),
+                date: $("#date").val(),
+                time: $("#time").val(),
+                meetingPlace: $("#meetingPlace").val(),
+                attendeesClientSide: $("#attendeesClientSide").val(),
+                attendeesHostSide: $("#attendeesHostSide").val(),
+                meetingAgenda: $("#meetingAgenda").val(),
+                meetingDiscussion: $("#meetingDiscussion").val(),
+                meetingDecision: $("#meetingDecision").val(),
+                details: $("#productTable tr").map(function () {
+                    return {
+                        productId: $(this).data('id'), // Fetch data-id from <tr>
+                        quantity: $(this).find("td:nth-child(3)").text() // Fetch quantity from 3rd column
+                    };
+                }).get()
+            };
+
+            if (!meetingData.customerId || !meetingData.date || !meetingData.time) {
+                alert("Please complete all fields.");
+                return;
+            }
+
+            console.log(JSON.stringify(meetingData)); // Debugging: log the payload
+
+            $.ajax({
+                url: '/Meeting/SaveMeeting',
+                method: 'POST',
+                contentType: 'application/json',
+                data: JSON.stringify(meetingData),
+                success: function (response) {
+                    alert(response.message);
+                    location.reload();
+                },
+                error: function () {
+                    alert("An error occurred while saving the meeting.");
+                }
+            });
+        });
+    });
+</script>
